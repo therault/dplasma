@@ -29,6 +29,8 @@ int main(int argc, char ** argv)
     PASTE_CODE_IPARAM_LOCALS(iparam);
     PASTE_CODE_FLOPS(FLOPS_ZPOTRF, ((DagDouble_t)N));
 
+    dplasma_warmup(parsec);
+
     /* initializing matrix structure */
     LDA = dplasma_imax( LDA, N );
     LDB = dplasma_imax( LDB, N );
@@ -42,10 +44,10 @@ int main(int argc, char ** argv)
     int t;
     for(t = 0; t < nruns; t++) {
         /* matrix (re)generation */
-        if(loud > 3) printf("+++ Generate matrices ... ");
+        if(loud > 3) fprintf(stderr, "+++ Generate matrices ... ");
         dplasma_zplghe( parsec, (double)(N), uplo,
                         (parsec_tiled_matrix_t *)&dcA, random_seed);
-        if(loud > 3) printf("Done\n");
+        if(loud > 3) fprintf(stderr, "Done\n");
 
         parsec_devices_release_memory();
 
@@ -57,7 +59,9 @@ int main(int argc, char ** argv)
             /* Set the recursive size */
             dplasma_zpotrf_setrecursive( PARSEC_zpotrf, iparam[IPARAM_HMB] );
             parsec_context_add_taskpool(parsec, PARSEC_zpotrf);
-            if( loud > 2 ) SYNC_TIME_PRINT(rank, ( "zpotrf\tDAG created\n"));
+            if( loud > 2 ) {
+                SYNC_TIME_PRINT(rank, ( "zpotrf\tDAG created\n"));
+            }
 
             PASTE_CODE_PROGRESS_KERNEL(parsec, zpotrf);
             dplasma_zpotrf_Destruct( PARSEC_zpotrf );
@@ -67,16 +71,18 @@ int main(int argc, char ** argv)
         }
         else
         {
+	    fprintf(stderr, "Starting POTRF\n");
             PASTE_CODE_ENQUEUE_PROGRESS_DESTRUCT_KERNEL(parsec, zpotrf, 
                                       ( uplo, (parsec_tiled_matrix_t*)&dcA, &info),
-                                      dplasma_zpotrf_Destruct( PARSEC_zpotrf ));
+                                      { fprintf(stderr, "step 3\n"); dplasma_zpotrf_Destruct( PARSEC_zpotrf ); });
+            fprintf(stderr, "Done POTRF\n");
         }
         parsec_devices_reset_load(parsec);
-
     }
+    PASTE_CODE_PERF_LOOP_DONE();
 
     if( 0 == rank && info != 0 ) {
-        printf("-- Factorization is suspicious (info = %d) ! \n", info);
+        fprintf(stderr, "-- Factorization is suspicious (info = %d) ! \n", info);
         ret |= 1;
     }
     if( !info && check ) {
