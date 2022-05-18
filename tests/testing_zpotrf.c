@@ -44,10 +44,10 @@ int main(int argc, char ** argv)
     int t;
     for(t = 0; t < nruns; t++) {
         /* matrix (re)generation */
-        if(loud > 3) fprintf(stderr, "+++ Generate matrices ... ");
+        if(loud > 3) printf("+++ Generate matrices ... ");
         dplasma_zplghe( parsec, (double)(N), uplo,
                         (parsec_tiled_matrix_t *)&dcA, random_seed);
-        if(loud > 3) fprintf(stderr, "Done\n");
+        if(loud > 3) printf("Done\n");
 
         parsec_devices_release_memory();
 
@@ -71,11 +71,9 @@ int main(int argc, char ** argv)
         }
         else
         {
-	    fprintf(stderr, "Starting POTRF\n");
             PASTE_CODE_ENQUEUE_PROGRESS_DESTRUCT_KERNEL(parsec, zpotrf, 
                                       ( uplo, (parsec_tiled_matrix_t*)&dcA, &info),
-                                      { fprintf(stderr, "step 3\n"); dplasma_zpotrf_Destruct( PARSEC_zpotrf ); });
-            fprintf(stderr, "Done POTRF\n");
+                                      dplasma_zpotrf_Destruct( PARSEC_zpotrf ));
         }
         parsec_devices_reset_load(parsec);
     }
